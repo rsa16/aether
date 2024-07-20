@@ -7,25 +7,43 @@ import { Flip } from "gsap/Flip";
 import { useEffect, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import { sourceCodePro } from "./fonts";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faGear } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 gsap.registerPlugin(Flip);
 gsap.registerPlugin(useGSAP);
 
 export default function Home() {
-    const containerRef = useRef(null);
     const titleRef = useRef(null)
     const underScoreRef = useRef(null);
+    const inputRef = useRef(null);
 
     const [loaded, setLoaded] = useState(false);
     const [displayUnderScore, setDisplayUnderScore] = useState(false);
+    const [inputFocused, setInputFocused] = useState(false);
+
+    useGSAP(() => {
+        if (inputFocused) {
+            gsap.to(`.${styles.inputContainer}`, {
+                width: "80%",
+                ease: "expo.out",
+                "--bgOpacity": 1
+            });
+
+        } else {
+            gsap.to(`.${styles.inputContainer}`, {
+                width: "40%",
+                ease: "expo.out",
+                "--bgOpacity": 0
+            });
+        }
+    }, [inputFocused])
 
     useEffect(() => {
         if (loaded) {
             setTimeout(() => {
                 setDisplayUnderScore(!displayUnderScore);
-            }, 500);
+            }, 300);
         }
     }, [displayUnderScore]);
 
@@ -33,26 +51,46 @@ export default function Home() {
         const title = new SplitType(titleRef.current, { types: 'chars' });
 
         const underScoreState = Flip.getState([underScoreRef.current, titleRef.current]);
+        gsap.from(`.${styles.bgBlob}`, { 
+            opacity: 0, 
+            delay: 3, 
+            ease: "expo.out", 
+            duration: 2
+        });
+
+        gsap.from(`.${styles.footer}`, { 
+            opacity: 0, 
+            delay: 3.3, 
+            ease: "expo.out", 
+            duration: 1
+        });
         
         const showInput = () => {
             setDisplayUnderScore(true);
-            
+
             let underScoreState = Flip.getState([underScoreRef.current, titleRef.current]);
             gsap.set(`.${styles.inputContainer}`, { display: 'flex', opacity: 0 });
-            gsap.set(underScoreRef.current, { opacity: 1 });
 
-            const flipAnim = Flip.from(underScoreState, {
+            Flip.from(underScoreState, {
                 duration: 1,
                 targets: [underScoreRef.current, titleRef.current],
                 ease: "expo.out",
-                absolute: true
-            });
-
-            flipAnim.to(`.${styles.inputContainer}`, { opacity: 1 })
+                absolute: true,
+                onComplete: () => {
+                    gsap.to(`.${styles.inputContainer}`, { opacity: 1 });
+                    setLoaded(true);
+                    setDisplayUnderScore(false);
+                }
+            })
         };
 
         const fadeUnderScore = () => {
-            showInput();
+            gsap.to(underScoreRef.current, {
+                opacity: 1,
+                ease: "ease.out",
+                duration: 0.3,
+                onComplete: showInput
+            });
         };
 
         const moveTitle = () => {
@@ -79,10 +117,34 @@ export default function Home() {
             ease: "expo.out",
             onComplete: moveTitle
         });
-    }, { scope: containerRef });
+    });
+
+    const hotKeyPress = (e) => {
+        switch (e.key) {
+            case "Enter":
+                if (inputFocused)
+                    inputRef.current.blur();
+                else
+                    inputRef.current.focus();
+
+                break;
+
+            case "Escape":
+                inputRef.current.blur();
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    useEffect(() => {
+        window.addEventListener("keydown", hotKeyPress);
+        return () => window.removeEventListener("keydown", hotKeyPress);
+    }, [inputFocused]);
 
     return (
-        <div ref={containerRef} className={styles.background}>
+        <div className={styles.background}>
             <div className={sourceCodePro.className} id={styles.title}>
                 <h1 ref={titleRef}>
                     aether
@@ -92,11 +154,27 @@ export default function Home() {
                 </span>
             </div>
             <div className={styles.inputContainer} style={{ display: 'none' }}>
-                <input id={styles.inputBar} type="text" placeholder="press enter to search..."></input>
+                <input
+                    ref={inputRef}
+                    onFocus={() => setInputFocused(true)}
+                    onBlur={() => setInputFocused(false)}
+                    id={styles.inputBar}
+                    type="text"
+                    placeholder={`press enter to ${(inputFocused) ? "search" : "focus"}...`}>
+                </input>
                 <div id={styles.searchBtn}>
-                    <FontAwesomeIcon icon={faMagnifyingGlass} inverse/>
+                    <FontAwesomeIcon icon={faMagnifyingGlass} inverse />
                 </div>
             </div>
+            <div className={styles.bgBlob}></div>
+
+            <footer className={styles.footer}>
+                <div className={styles.footerCenter}>
+                    <span>made by rsa16 with 💖</span>
+                </div>
+
+                <FontAwesomeIcon id={styles.settingsBtn} icon={faGear}/>
+            </footer>
         </div>
     )
 }
